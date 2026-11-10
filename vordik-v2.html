@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Вордик</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&display=swap">
+<style>
+:root{--bg:#f4f2fc;--fg:#1d1a3a;--muted:#6d6a8a;--empty:#dcd8f0;--key:#e3e0f4;--ok:#2a9d6a;--near:#f0a028;--no:#8b88a8;--flame:#ff6a1a;--on:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15122e;--fg:#f1efff;--muted:#a7a3cc;--empty:#2b2754;--key:#3a3570;--no:#4a4678;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15122e;--fg:#f1efff;--muted:#a7a3cc;--empty:#2b2754;--key:#3a3570;--no:#4a4678;color-scheme:dark}
+html{height:100%}
+body{margin:0;min-height:100%}
+body>*{flex-shrink:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 6px;box-sizing:border-box}
+header{text-align:center}
+h1{font:700 1.4rem "Unbounded",system-ui,sans-serif;margin:0;letter-spacing:-.02em}
+h1 span{color:var(--flame)}
+#sub{color:var(--muted);font-size:.8rem;margin-top:2px}
+#status{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.9rem;text-align:center;min-height:44px;padding:0 8px;margin:6px 0 12px}
+#status b{color:var(--flame)}
+#status .sm{color:var(--muted);font-size:.82rem}
+#inv{border:0;border-radius:999px;padding:7px 16px;background:var(--flame);color:#fff;font:600 .88rem system-ui,sans-serif}
+#grid{display:grid;grid-template-rows:repeat(6,1fr);gap:5px;width:min(240px,64vw)}
+.row{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.t{aspect-ratio:1;border-radius:9px;background:var(--empty);display:flex;align-items:center;justify-content:center;font:700 clamp(1.1rem,5.5vw,1.6rem) "Unbounded",system-ui,sans-serif;text-transform:uppercase}
+.t.f{outline:2px solid var(--muted);outline-offset:-2px}
+.t.g{background:var(--ok);color:var(--on)}.t.y{background:var(--near);color:var(--on)}.t.a{background:var(--no);color:var(--on)}
+#msg{min-height:1.4em;text-align:center;font-size:.92rem;padding:0 12px}
+#msg b{color:var(--flame)}
+#enter{width:min(220px,60vw);height:44px;margin:8px 0 10px;border:0;border-radius:999px;background:#ffc93c;color:#2a2100;font:700 1.1rem "Unbounded",system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;box-shadow:0 3px 0 #c9971a;touch-action:manipulation}
+#enter:active{transform:translateY(2px);box-shadow:0 1px 0 #c9971a}
+#kb{width:100%;max-width:440px;display:flex;flex-direction:column;gap:5px}
+.kr{display:flex;gap:4px;justify-content:center}
+.k{flex:1;max-width:36px;height:42px;border:0;border-radius:8px;background:var(--key);color:var(--fg);font:600 1rem system-ui,sans-serif;text-transform:uppercase;padding:0;touch-action:manipulation}
+.k.w{max-width:56px}
+.k.g{background:var(--ok);color:var(--on)}.k.y{background:var(--near);color:var(--on)}.k.a{background:var(--no);color:var(--on)}
+#practice{background:none;border:1px solid var(--muted);color:var(--muted);border-radius:999px;padding:5px 14px;font-size:.78rem;margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Вор<span>дик</span></h1>
+  <div id="sub"></div>
+</header>
+<div id="status"></div>
+<div id="grid"></div>
+<div id="msg"></div>
+<button id="enter">Ввод</button>
+<div id="kb"></div>
+<button id="practice">Тренировка: другое слово</button>
+<script>
+/* ---------- настройки ---------- */
+const SB="https://pimqyaqbcjomvdtzlprs.supabase.co";
+const KEY="sb_publishable_7G8CgmT2SerS3-ql4HbHEg_EsHnttsh";
+const BOT="vordik_game_bot";
+const APP=""; /* короткое имя мини-приложения из BotFather, если задано */
+
+/* ---------- слова ---------- */
+const WORDS="арбуз берег ветер весна гроза дождь зебра игрок книга кошка лодка малыш мечта народ огонь озеро плечо почта ручка сосна стена стопа танец улица успех фильм цветы шарик школа герой город грибы жизнь земля зерно кисть класс лампа лента масло метро нефть орган панда перец песок пирог поезд право птица радио слива слово смена собор спорт среда старт столб сумка тропа труба туман уголь халат хвост чайка часть шапка шторм экран ягода якорь ветка волна вилка груша жираф кукла мороз нитка ножик порог пчела рыбак сапог тучка чашка норка".split(" ").filter(w=>w.length===5);
+const ROWS=["йцукенгшщзхъ","фывапролджэ","ячсмитьбю"];
+const today=new Date().toISOString().slice(0,10);
+const dayNum=Math.floor(Date.parse(today)/864e5);
+
+/* ---------- хранилище и Телеграм ---------- */
+function ls(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lset(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+const tg=window.Telegram&&Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();}catch(e){}}
+function getMe(){
+  const u=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user;
+  if(u&&u.id) return u.id;
+  let v=ls("vordik_me");
+  if(!v){v=-Math.floor(Math.random()*1e12)-1;lset("vordik_me",v);}
+  return Number(v);
+}
+const ME=getMe();
+let pair=null, st=null, poll=null;
+
+async function rpc(fn,args){
+  const r=await fetch(SB+"/rest/v1/rpc/"+fn,{method:"POST",headers:{"apikey":KEY,"Content-Type":"application/json"},body:JSON.stringify(args)});
+  if(!r.ok) throw new Error(await r.text());
+  const t=await r.text(); return t?JSON.parse(t):null;
+}
+
+/* ---------- игра ---------- */
+let secret=WORDS[dayNum%WORDS.length], guesses=[], cur="", done=false, practice=false, t0=0, tEnd=0;
+function save(){ if(practice) return; lset("vordik",JSON.stringify({today,guesses,done,t0,tEnd})); }
+function load(){ try{ const s=JSON.parse(ls("vordik")||"null"); if(s&&s.today===today){guesses=s.guesses;done=s.done;t0=s.t0;tEnd=s.tEnd;} }catch(e){} }
+function score(g,s){
+  const r=Array(5).fill("a"),left={};
+  for(let i=0;i<5;i++){ if(g[i]===s[i]) r[i]="g"; else left[s[i]]=(left[s[i]]||0)+1; }
+  for(let i=0;i<5;i++){ if(r[i]!=="g"&&left[g[i]]>0){r[i]="y";left[g[i]]--;} }
+  return r;
+}
+const rank={a:1,y:2,g:3};
+function render(){
+  document.getElementById("sub").textContent=practice?"Тренировка":"Слово дня №"+(dayNum%1000);
+  const grid=document.getElementById("grid"); grid.innerHTML="";
+  const keys={};
+  for(let r=0;r<6;r++){
+    const row=document.createElement("div"); row.className="row";
+    const g=guesses[r], sc=g&&score(g,secret);
+    for(let c=0;c<5;c++){
+      const t=document.createElement("div"); t.className="t";
+      if(g){ t.textContent=g[c]; t.classList.add(sc[c]); if(!keys[g[c]]||rank[sc[c]]>rank[keys[g[c]]]) keys[g[c]]=sc[c]; }
+      else if(r===guesses.length&&!done&&cur[c]){ t.textContent=cur[c]; t.classList.add("f"); }
+      row.appendChild(t);
+    }
+    grid.appendChild(row);
+  }
+  document.querySelectorAll(".k[data-k]").forEach(b=>{ b.classList.remove("g","y","a"); if(keys[b.dataset.k]) b.classList.add(keys[b.dataset.k]); });
+}
+function say(h){ document.getElementById("msg").innerHTML=h; }
+function secs(){ return Math.max(1,Math.round((tEnd-t0)/1000)); }
+function endText(){
+  const win=guesses[guesses.length-1]===secret;
+  return win?"Угадал за <b>"+guesses.length+" из 6</b> · "+secs()+" с":"Слово было: <b>"+secret.toUpperCase()+"</b>";
+}
+function press(k){
+  if(done) return;
+  if(k==="del"){ cur=cur.slice(0,-1); say(""); }
+  else if(k==="enter"){
+    if(cur.length<5){ say("Нужно 5 букв"); return; }
+    if(!t0) t0=Date.now();
+    guesses.push(cur);
+    if(cur===secret||guesses.length===6){ done=true; tEnd=Date.now(); say(endText()); } else say("");
+    cur=""; save();
+    if(done) submit();
+  } else if(cur.length<5){ if(!t0) t0=Date.now(); cur+=k; }
+  render();
+}
+
+/* ---------- пара и серия ---------- */
+async function submit(){
+  if(practice||!pair||!done) return;
+  const win=guesses[guesses.length-1]===secret;
+  try{ await rpc("submit_result",{p_pair:pair,p_tg:ME,p_day:today,p_attempts:win?guesses.length:7,p_seconds:secs()}); }catch(e){}
+  refresh();
+}
+function key(r){ return [r.attempts, r.attempts===7?0:r.seconds]; }
+function better(a,b){ const x=key(a),y=key(b); return x[0]<y[0]||(x[0]===y[0]&&x[1]<y[1]); }
+function renderStatus(){
+  const el=document.getElementById("status");
+  if(!pair){ el.innerHTML='<span class="sm">Играй с другом и копи огонёк</span><button id="inv">Пригласить друга</button>'; return; }
+  if(!st){ el.innerHTML='<span class="sm">Загружаем пару…</span>'; return; }
+  if(!st.user_b){ el.innerHTML='<span>Ждём друга…</span><button id="inv">Отправить ссылку</button>'; return; }
+  const mine=ME===st.user_a?st.wins_a:st.wins_b, theirs=ME===st.user_a?st.wins_b:st.wins_a;
+  const my=st.today.find(r=>r.tg_id===ME), fr=st.today.find(r=>r.tg_id!==ME);
+  let line;
+  if(!my) line="Сегодня ты ещё не играл";
+  else if(!fr) line="Ждём ход друга";
+  else if(better(my,fr)) line="Сегодня победил <b>ты</b>";
+  else if(better(fr,my)) line="Сегодня победил <b>друг</b>";
+  else line="Сегодня ничья";
+  el.innerHTML='<span>🔥 <b>'+st.streak+'</b> · Ты '+mine+' : '+theirs+' Друг</span><span class="sm">'+line+'</span>';
+}
+async function refresh(){
+  clearTimeout(poll);
+  if(!pair){ renderStatus(); return; }
+  try{ st=await rpc("get_state",{p_pair:pair,p_tg:ME,p_day:today}); }catch(e){ st=null; }
+  if(!st){ pair=null; lset("vordik_pair",""); }
+  renderStatus();
+  if(st&&(!st.user_b||!st.today.some(r=>r.tg_id!==ME))) poll=setTimeout(refresh,20000);
+}
+async function invite(){
+  try{
+    if(!pair){ pair=await rpc("create_pair",{p_tg:ME}); lset("vordik_pair",pair); await refresh(); if(done) submit(); }
+    const link=(APP?"https://t.me/"+BOT+"/"+APP:"https://t.me/"+BOT)+"?startapp="+pair;
+    const text="Играем в Вордик? Угадываем слово дня и копим огонёк 🔥";
+    if(tg&&tg.openTelegramLink) tg.openTelegramLink("https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent(text));
+    else { await navigator.clipboard.writeText(link); say("Ссылка скопирована"); }
+  }catch(e){ say("Не получилось создать приглашение"); }
+}
+async function initPair(){
+  const sp=(tg&&tg.initDataUnsafe&&tg.initDataUnsafe.start_param)||new URLSearchParams(location.search).get("pair");
+  if(sp&&/^[0-9a-f-]{36}$/.test(sp)){
+    try{
+      const ok=await rpc("join_pair",{p_pair:sp,p_tg:ME});
+      if(ok){ pair=sp; lset("vordik_pair",sp); } else say("Эта пара уже занята");
+    }catch(e){}
+  }
+  if(!pair){ const p=ls("vordik_pair"); if(p) pair=p; }
+  await refresh();
+  if(done) submit();
+}
+
+/* ---------- запуск ---------- */
+function mk(label,k,wide){
+  const b=document.createElement("button"); b.className="k"+(wide?" w":""); b.textContent=label;
+  if(!wide) b.dataset.k=k; b.addEventListener("click",()=>press(k)); return b;
+}
+ROWS.forEach((r,i)=>{
+  const row=document.createElement("div"); row.className="kr";
+  [...r].forEach(ch=>row.appendChild(mk(ch,ch,false)));
+  if(i===2) row.appendChild(mk("⌫","del",true));
+  document.getElementById("kb").appendChild(row);
+});
+document.getElementById("enter").addEventListener("click",()=>press("enter"));
+document.getElementById("status").addEventListener("click",e=>{ if(e.target.id==="inv") invite(); });
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter") press("enter"); else if(e.key==="Backspace") press("del");
+  else { const c=e.key.toLowerCase().replace("ё","е"); if(c.length===1&&/[а-я]/.test(c)) press(c); }
+});
+document.getElementById("practice").addEventListener("click",()=>{
+  practice=true; secret=WORDS[Math.floor(Math.random()*WORDS.length)]; guesses=[]; cur=""; done=false; t0=0; tEnd=0; say(""); render();
+});
+load(); render(); if(done) say(endText());
+renderStatus(); initPair();
+</script>
+</body>
+</html>
